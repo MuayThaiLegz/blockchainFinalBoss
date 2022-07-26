@@ -1,9 +1,7 @@
 import React from 'react';
 
 function InputField(props) {
-
     let field = props.name;
-	
     let value = props.fields[field] ? props.fields[field] : '';
     let placeholder = props.placeholder;
     let addon = props.addon;

@@ -5,9 +5,8 @@ function Description(props) {
         <section className="container">
             <div className="has-text-centered content">
                 <br/>
-                <h1 className="title is-4 is-uppercase has-text-primary">Trade Finance Online</h1>
-                <h2 className="subtitle is-4 has-text-grey-light">LC Module</h2>
-            </div>
+                <h1 className="title is-4 is-uppercase has-text-is-warning">Decentralized Exchange</h1>
+                <h2 className="subtitle is-6 has-text-black-light">Buy and Sell Assets   </h2></div>
         </section>
     )
 }

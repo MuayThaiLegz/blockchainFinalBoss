@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 class Nav extends Component {
     render(){
         return (
-            <nav className="navbar is-primary"  aria-label="main navigation">
+            <nav className="navbar is-success"  aria-label="main navigation">
                 <div className="navbar-brand">
                     <a className="navbar-item" href="/">
                         <strong><i className="fa fa-coins"></i> {this.props.appName}</strong>
@@ -22,7 +22,8 @@ class Nav extends Component {
                                 <span className="tag">
                                     <i className="fa fa-signal"></i> &nbsp; Network
                                 </span>
-                              </div>
+                                <span className="tag is-info">{this.props.network}</span>
+                            </div>
                         </a>
                     </div>
                 </div>

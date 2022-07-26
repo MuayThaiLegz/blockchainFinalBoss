@@ -1,11 +1,22 @@
 import React from 'react';
 
 function addressBar(props) {
+ 
+	
     return (
-        <p className={props.tx ? "is-hidden" : "panel-heading has-text-centered is-clipped is-size-7"}>
-            Account:
-            <strong>{props.account}</strong>
+        
+		<div>
+		<p className={"panel-heading has-text-centered is-clipped is-size-7"}>
+            ETH Account:
+            {props.account}
         </p>
+		<p className={"panel-heading has-text-centered is-clipped is-size-7"}>
+            Fiat Balance:
+            <strong>{props.USDBalance} USD </strong>
+             Asset Balance:
+			<strong>{props.AuBalance} Gold</strong>
+        </p>
+		</div>
     )
 }
 

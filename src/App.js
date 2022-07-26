@@ -1,96 +1,580 @@
 import React, { Component } from 'react';
-//import Web3 from 'web3'
 import Web3 from 'web3/dist/web3.min.js'
 
 import Nav from './Components/Nav';
 import Description from './Components/Description';
 import Container from './Components/Container';
-import LCMaster from './contracts/LCMaster';
-import LCabi from './contracts/LCabi';
+import OrderbookABI from './Contracts/OrderbookABI';
+import Gold from './Contracts/Gold';
+import USD from './Contracts/USD';
 
 
 class App extends Component {
-	
-	constructor(){
+    constructor(){
         super();
-		
-		this.LCMaster = LCMaster;
-		this.LCabi = LCabi;
-		
-        this.appName = 'ABC Bank';
-        this.closeTab = this.closeTab.bind(this);
-		this.resetApp = this.resetApp.bind(this);
-		this.viewLC = this.viewLC.bind(this);
-		this.viewSingleLC = this.viewSingleLC.bind(this);
+        this.appName = 'Exchange';
+		this.watchweb3 = new Web3(new Web3.providers.WebsocketProvider('ws://localhost:8545'))
+        this.isWeb3 = true;
+		this.OrderbookABI = OrderbookABI;
+		this.Gold = Gold;
+		this.USD = USD;
         this.onInputChangeUpdateField = this.onInputChangeUpdateField.bind(this);
+		this.setBalance = this.setBalance.bind(this);
         this.state = {
-					role: null,
-					option: null,
-					LCNew: [],
-					LC: [],
-					fields: {
-						BuyerAccount: null,
-						SellerAccount: null,
-                		Amount: null,
-                		DOExpiry: null,
-						DocHash: null,
-						LCNo: null
-                            },
-                    };
-        }
-	
-	BuyerSessionView = () => {
-        this.setState({
-            role: 'Buyer',
-			option: 'View'
+            
 			
-        })
-		this.viewLC();
-		
-	};
+            network: 'Checking...',
+            account: null,
+			buys: [],
+			sells: [],
+			AuBalance: 0,
+			USDBalance: 0,
+            lastBlock: 0,			
+			     fields: {
+				buyprice: null,
+                buyamount: null,
+				sellprice: null,
+                sellamount: null
+            }
+            
+        };
+		}
+  
+    		
 	
-    BankSessionCreate = () => {
-        this.setState({
-            role: 'Bank',
-			option: 'Create'
-        })
-	};
+	
+	
+    setNetwork = () => {
+        let networkName,that = this;
 
-	BankSessionView = () => {
-        this.setState({
-            role: 'Bank',
-			option: 'View'
-        })
-		this.viewLC();
-	};
-		
-	SellerSessionView = () => {
-        this.setState({
-            role: 'Seller',
-			option: 'View'
-        })
-		this.viewLC();
+        this.web3.eth.net.getNetworkType(function (err, networkId) {
+            switch (networkId) {
+                case "1":
+                    networkName = "Main";
+                    break;
+                case "2":
+                    networkName = "Morden";
+                    break;
+                case "3":
+                    networkName = "Ropsten";
+                    break;
+                case "4":
+                    networkName = "Rinkeby";
+                    break;
+                case "42":
+                    networkName = "Kovan";
+                    break;
+                default:
+                    networkName = networkId;
+            }
+
+            that.setState({
+                network: networkName
+            })
+        });
     };
 
-SellerSessionVSettle = (LCNo) => {
-        this.setState({
-            role: 'Seller',
-			option: 'Settle',
-			fields: {
-				LCNo: LCNo
+
+
+
+
+	closeTransfer = () => {
+        	this.setState({
+            transferDetail20: {},
+            fields: {},
+        })
+	};
+
+
+
+setBalance = () => {
+	
+	let app = this;
+	
+    var contractUSD = new this.web3.eth.Contract(app.USD.abi,app.USD.address); 			
+	contractUSD.methods.balanceOf(app.web3.eth.defaultAccount).call().then(function(response){
+	
+		if(response)
+		{
+			let USDBalance = response;
+	app.setState({
+            USDBalance
+        })
+		}
+	})
+												
+	var contractGold = new this.web3.eth.Contract(app.Gold.abi,app.Gold.address);
+
+	contractGold.methods.balanceOf(app.web3.eth.defaultAccount).call().then(function(response){
+	
+	if(response)
+		{
+			let AuBalance = response;
+	app.setState({
+            AuBalance
+        })
+		}
+	})
+}
+
+
+
+
+    resetApp = () => {
+      this.setState({            			
+			     fields: {
+                price: null,
+                amount: null,				
+                gasPrice: null,
+                gasLimit: null,
+            }
+	  })
+		
+    };
+
+	Sell = () => {
+		console.log(" Sell Fired");
+		
+		let app = this;
+		let amount = this.state.fields.sellamount;
+		let price = this.state.fields.sellprice;
+		var contractGold = new this.web3.eth.Contract(app.Gold.abi,app.Gold.address);
+		var contractOB = new this.web3.eth.Contract(app.OrderbookABI.abi,app.OrderbookABI.address);
+		var buys = app.state.buys; 
+		
+		if(buys.length == 0 )
+		{
+
+		contractGold.methods.approve(app.OrderbookABI.address,amount*100)
+				.send({from: app.web3.eth.defaultAccount}).then(function(response){
+				
+					if(response) {
+					contractOB.methods.addSell(amount,price)
+					.send({from: app.web3.eth.defaultAccount}).then(function(response){
+							console.log(response);
+							app.setBalance();
+							app.resetApp();
+					})
+					}
+				})
+		}
+		
+		else
+		{
+		
+		var i = 0;
+		let OrderPrice = buys[i].Price;
+			
+		if ( price > OrderPrice)
+			{
+			
+			contractGold.methods.approve(app.OrderbookABI.address,amount*100)
+				.send({from: app.web3.eth.defaultAccount}).then(function(response){
+				
+					if(response) {
+					contractOB.methods.addSell(amount,price)
+					.send({from: app.web3.eth.defaultAccount}).then(function(response){
+							console.log(response);
+							app.setBalance();
+							app.resetApp();
+					})
+					}
+				})			
 			}
-        })
-	    };
+		else	
+			{
+			
+				contractGold.methods.approve(app.OrderbookABI.address,amount*100)
+				.send({from: app.web3.eth.defaultAccount}).then(function(response){
+					
+					if(response) {
 
-SellerSessionSettle = () => {
-        this.setState({
-            role: 'Seller',
-			option: 'Settle'
-        })
+		while ( i < buys.length)
+		{
+			var counter = i;
+			OrderPrice = buys[i].Price;
+			var OrderAmount = buys[i].Amount;
+			
+			if (amount >= OrderAmount)
+			{
+						
+					contractOB.methods.trade(buys[counter].OrderNo,OrderAmount
+								 			,OrderPrice, 2)
+					.send({from: app.web3.eth.defaultAccount}).then(function(response){
+							console.log(response);
+							app.setBalance();
+							app.resetApp();
+					})
+				
+				amount = amount - OrderAmount;
+			}
+			
+			else 
+			{
+						
+					contractOB.methods.trade(buys[counter].OrderNo,amount
+								 			,OrderPrice, 2)
+					.send({from: app.web3.eth.defaultAccount}).then(function(response){
+							console.log(response);
+							app.setBalance();
+							app.resetApp();
+					})
+				
+			amount = 0;
+			}			
+				
+			i++;
+			
+			
+			
+			if ( i < app.state.buys.length)
+			{
+			OrderPrice = buys[i].Price;	
+			if (price > OrderPrice && amount > 0 )
+			{
+				
+					contractOB.methods.addSell(amount,price)
+					.send({from: app.web3.eth.defaultAccount}).then(function(response){
+							console.log(response);
+							app.setBalance();
+							app.resetApp();
+					})
+			}
+				
+					
+			if (amount == 0 || price > OrderPrice)
+			{
+			 	i = app.state.buys.length;
+		  	}
+			}	
+		}
+		}
+		})
+		}
+		}
+	}
 		
-    };
+		Buy = () => {
+		console.log(" Buy Fired");
+		
+		let app = this;
+		let amount = this.state.fields.buyamount;
+		let price = this.state.fields.buyprice;
+		var contractUSD = new this.web3.eth.Contract(app.USD.abi,app.USD.address);
+		var contractOB = new this.web3.eth.Contract(app.OrderbookABI.abi,app.OrderbookABI.address);
+		var sells = app.state.sells; 
+		
+		if(sells.length == 0 )
+		{
 
-onInputChangeUpdateField = (name,value) => {
+		contractUSD.methods.approve(app.OrderbookABI.address,amount*price*100)
+				.send({from: app.web3.eth.defaultAccount}).then(function(response){
+				
+					if(response) {
+					contractOB.methods.addBuy(amount,price)
+					.send({from: app.web3.eth.defaultAccount}).then(function(response){
+							console.log(response);
+							app.setBalance();
+							app.resetApp();
+					})
+					}
+				})
+		}
+		
+		else
+		{
+		var i = 0;
+		let OrderPrice = sells[i].Price;
+			
+		if (OrderPrice > price)
+			{
+			
+					
+			contractUSD.methods.approve(app.OrderbookABI.address,amount*price*100)
+				.send({from: app.web3.eth.defaultAccount}).then(function(response){
+				
+					if(response) {
+					contractOB.methods.addBuy(amount,price)
+					.send({from: app.web3.eth.defaultAccount}).then(function(response){
+							console.log(response);
+							app.setBalance();
+							app.resetApp();
+					})
+					}
+				})			
+			}
+		else	
+			{
+				
+		contractUSD.methods.approve(app.OrderbookABI.address,
+											amount*price*100)
+				.send({from: app.web3.eth.defaultAccount}).then(function(response){
+				if(response) {
+		while ( i < sells.length  )
+		{
+			var counter = i;
+			OrderPrice = sells[i].Price;
+			var OrderAmount = sells[i].Amount; 
+			
+			if (amount >= OrderAmount)
+			{
+				
+					contractOB.methods.trade(sells[counter].OrderNo,OrderAmount
+								 			,OrderPrice, 1)
+					.send({from: app.web3.eth.defaultAccount}).then(function(response){
+							console.log(response);
+							app.setBalance();
+							app.resetApp();
+					})
+					
+			amount = amount - OrderAmount;
+			
+			}
+				
+	
+			else 
+			{
+				
+			
+			contractOB.methods.trade(sells[counter].OrderNo,amount
+								 			,OrderPrice, 1)
+					.send({from: app.web3.eth.defaultAccount}).then(function(response){
+							console.log(response);
+							app.setBalance();
+							app.resetApp();
+					})
+				
+			amount = 0;
+			}
+					
+			i++;
+			
+			
+			
+			if ( i < sells.length )
+			{
+				OrderPrice = sells[i].Price;
+			if (OrderPrice > price && amount > 0 )
+			{
+
+					contractOB.methods.addBuy(amount,price)
+					.send({from: app.web3.eth.defaultAccount}).then(function(response){
+							console.log(response);
+							app.setBalance();
+							app.resetApp();
+					})
+			}
+			
+			if (amount == 0 || OrderPrice > price)
+			{
+			 	i = sells.length ;
+		  	}
+			}
+		}
+		}
+		})
+		}
+		}
+		}	
+		
+			
+		
+				
+		
+
+setOrderbook = () =>
+		{
+		let app = this;
+		var lastBuy;
+		var lastSell;	
+		var contract = new this.watchweb3.eth.Contract(this.OrderbookABI.abi,this.OrderbookABI.address);	
+        contract.methods.viewLengthBuy().call().then(function(response){
+			if(response) {
+				
+				lastBuy = response;
+				
+					 			 
+			if (lastBuy >= 1)
+			{
+			app.setState({
+                        buys: [],
+                    	})	
+								
+				for (let i = 1; i <= lastBuy ; i++)
+		{
+			
+			contract.methods.viewBuy(i).call().then(function(response){
+			if(response) {
+						
+						let OrderNo = i;	
+    					let Amount = Number(response[0]);
+						let Price = Number(response[1]);
+						let TimeStamp = Number(response[2]);	
+						
+						if (  Amount > 0)
+						{
+							
+								
+						
+	
+						let buys = app.state.buys;
+							
+				
+						buys.push({
+                        OrderNo,
+						Amount,
+                        Price,
+                        TimeStamp
+                    });
+					
+							
+                    app.setState({
+                        buys
+                    })
+						
+				
+			
+			
+			if (i == lastBuy)
+			{
+				
+				let buys = app.state.buys
+				buys.sort(function (a, b) {
+				
+					if(a.Price == b.Price)
+					{
+						return (a.TimeStamp > b.TimeStamp) ? 1 : (a.TimeStamp < b.TimeStamp) ? -1 : 0;
+					}
+    				else
+    				{
+        				return (a.Price < b.Price) ? 1 : -1;
+    				}
+				});
+				
+				app.setState({
+                        buys
+                    })
+				 
+				
+			}
+			}
+				
+			}
+			})	
+		
+		
+		}
+		}		
+		}
+		})
+				
+		contract.methods.viewLengthSell().call().then(function(response){
+			if(response) {
+				lastSell = response;
+				
+				 
+				
+			if (lastSell >= 1)
+			{
+					app.setState({
+                        sells: [],
+                    	})	
+					
+			for (let i = 1; i <= lastSell ; i++)
+		{
+		
+			contract.methods.viewSell(i).call().then(function(response){
+			if(response) {
+						
+						let OrderNo = i;	
+    					let Amount = Number(response[0]);
+						let Price = Number(response[1]);
+						let TimeStamp = Number(response[2]);	
+						
+						if (  Amount > 0)
+						{
+							
+						
+						let sells = app.state.sells;
+						
+						sells.push({
+                        OrderNo,
+						Amount,
+                        Price,
+                        TimeStamp
+                    });
+
+                    app.setState({
+                        sells
+                    })
+						
+					
+			if (i == lastSell)
+			{
+				let sells = app.state.sells
+				
+				sells.sort(function (a, b) {
+				
+					if(a.Price == b.Price)
+					{
+						return (a.TimeStamp > b.TimeStamp) ? -1 : (a.TimeStamp < b.TimeStamp) ? 1 : 0;
+					}
+    				else
+    				{
+        				return (a.Price < b.Price) ? -1 : 1;
+    				}
+				});
+				
+				app.setState({
+                        sells
+                    })
+
+			}
+			}
+			
+			
+			
+			
+			}
+			})
+			
+			
+			
+		}
+		}		
+		}
+		})
+		}
+
+
+watchOrderbook() {
+        
+		let app = this;
+	
+		var contractOB = new app.watchweb3.eth.Contract(this.OrderbookABI.abi,this.OrderbookABI.address);
+		
+	
+		app.watchweb3.eth.getBlockNumber(function(error,response){
+			if(response)
+			{
+		
+				let lastBlock = response;
+				
+		
+		contractOB.events.allEvents({
+            fromBlock: lastBlock+1
+			
+        }, function(error, event){ 
+				
+				console.log("Event",event); 
+				app.setOrderbook();
+			}).on('error', console.error);
+									  
+		}
+		})
+}
+
+    onInputChangeUpdateField = (name,value) => {
         let fields = this.state.fields;
 
         fields[name] = value;
@@ -100,264 +584,59 @@ onInputChangeUpdateField = (name,value) => {
         });
     };
 
-
-closeTab = () => {
-        this.setState({
-            role: null,
-			option: null,
-            fields: {},
-        })
-    };
-
-closeViewTab = () => {
-        this.setState({
-			option: 'View',
-        })
-    };
-
-resetApp = () => {
-        this.setState({
-			role: null,
-			option: null,
-			fields: {
-					BuyerAccount: null,						
-                	SellerAccount: null,	
-                    Amount: null,	
-                	DOExpiry: null,
-					DocHash: null,
-					LCNum: null
-                    },
-		})          
-	window.location.reload();
-    };
-
-
-setGasPrice = (web3) => {
-	web3.eth.getGasPrice((err,price) => {if(!err)
-		{
-			console.log(price);	
-            price = web3.utils.fromWei(price.toString(),'gwei');
-            this.setState({defaultGasPrice: price})
-		}
-		else
-		{
-			console.log(err);
-		}										  
-        });
-    };
-createLC = () => {
+    componentDidMount(){
 	
-	let app = this; 
-	var contract = new this.web3.eth.Contract(this.LCMaster.abi, this.LCMaster.address);	
-	
-	let dateExpiry = this.state.fields.DOExpiry;
-	let year = dateExpiry.slice(0,4);
-	
-	let month = dateExpiry.slice(4,6)-1;
-	let day = dateExpiry.slice(6,8);
-	var DateTemp = new Date(year, month, day, 23, 59, 59, 0)
-	var DOE = Math.floor(DateTemp.getTime()/1000.0)
-	
-	contract.methods.createLC(this.state.fields.BuyerAccount,this.state.fields.SellerAccount, 
-					  this.state.fields.Amount,DOE).send({from: app.web3.eth.defaultAccount},this.state.defaultGasPrice).then(function(response){
-						
-						if(response) {
-                        		    console.log("LC No.");
-									console.log(response);
-									app.resetApp();
-									}
-							
-	})
-	};
-
-
-settleLC = () => {
-	
-	let app = this; 
-	var contractMaster = new this.web3.eth.Contract(this.LCMaster.abi,this.LCMaster.address);
-	contractMaster.methods.viewLC(app.state.fields.LCNo).call().then(function(response){												
-						if(response) {
-						let LCAddress = response[6];
-							
-						var contractLC = new app.web3.eth.Contract(app.LCabi.abi,LCAddress);
-						contractLC.methods.settleLC(app.state.fields.Amount,app.state.fields.DocHash)
-											.send({from: app.web3.eth.defaultAccount})
-											.then(function(response){
-						
-												if(response) {
-                        		    			console.log(response);
-												app.resetApp;
-												}
-												
-											})
-										}
-										})
-}
-																																																																																																																																																																			
-
-viewSingleLC = (LCAdd) => {
-	
-	let app = this;
-	app.setState({
-                        LC: [],
-				});
+		var account;
 		
-	var contract = new this.web3.eth.Contract(this.LCabi.abi,LCAdd);
+		if (window.ethereum) {
+        const ethereum = window.ethereum;
+   
+	    this.web3 = new Web3(ethereum);
 	
-	contract.methods.viewLCdetails().call().then(function(response){	
-		if(response) {
-						let LCNo = response[0];	
-    					let BuyerAcc = response[1];
-						let SellerAcc = response[2];
-						let Amount = response[3];
-						let IniAmount = response[4];
-						let Status = app.web3.utils.hexToAscii(response[5]);																																																																																																																																																																																																																																																																																																																																																																								
-                    	let DOI = response[6];
-						let DOE = response[7];
-						let DocHash = response[8];	
-						
-						let LC = app.state.LC;
-		
-						LC.push({
-                        LCNo,
-						BuyerAcc,
-                        SellerAcc,
-                        Amount,
-						IniAmount,	
-                        Status,
-                        DOI,
-                        DOE,
-                        DocHash
-                    });
-			
-			app.setState({
-                        LC,
-						option: 'ViewSingleLC'
-                    })
-			
-			
-		}
-	})
-}
-
-
-viewLC = () => {
-	
-	let app = this;
-	var lastLC;
-	
-	
-	var contract = new this.web3.eth.Contract(this.LCMaster.abi,this.LCMaster.address);
-	contract.methods.lengthLC().call().then(function(response){
-		
-		
-		     if(response) {
-				lastLC = response;
-						 
-			if (lastLC > 1)
-			{
-				
-				app.setState({
-                        LCNew: [],
-                    })
-		
-				
-	for (let i = 1; i < lastLC ; i++)
-	{
-		
-		contract.methods.viewLC(i).call().then(function(response){
-						
-						
-						if(response) {
-						let LCNo = i;	
-    					let SAcc = response[0];
-						let BAcc = response[1];
-						let Amount = response[2];			
-						let Status = app.web3.utils.hexToAscii(response[3]);	
-						let DOI = response[4];
-						let DOE = response[5];
-						let LCAdd = response[6];	
-						
-						let LCNew = app.state.LCNew;
-						
-							LCNew.push({
-                        LCNo,
-						BAcc,
-                        SAcc,
-                        Amount,
-                        Status,
-                        DOI,
-                        DOE,
-                        LCAdd
-                    });
-
-                    app.setState({
-                        LCNew
-                    })
-					}
-	              })
-			}
-			}
-			 }
-	})
-}
-	
-					  
-		
-componentDidMount(){
-	
-	var account;
-
-	if (window.ethereum) {
-		const ethereum = window.ethereum;
-		let web3 = new Web3(ethereum);
 		ethereum.enable().then((accounts) => {
-		let account = accounts[0];
-		web3.eth.defaultAccount = account ;
-		this.setGasPrice(web3);
+  		
+		account = accounts[0];
+ 		this.web3.eth.defaultAccount = account ;
+		
 		let app = this;
-
-			
- 		
-			
+		
 		this.setState({
-            account			
+            account
         });
-			
-		})
+
+        this.setNetwork();
+		this.setBalance();
+		this.setOrderbook();	
+		this.watchOrderbook();	
+		})		
+		}
 	}
-}
-
-			
-    
+							   
+		
+		 
+						   
+						   
     render() {
-       return (
+        
+       
+                return (
                     <div>
-                        <Nav appName={this.appName}/>
+                        <Nav appName={this.appName} network={this.state.network} />
                         <Description />
-                        <Container role={this.state.role}
-					               option={this.state.option}
-								   account = {this.state.account}
-								   LCNew = {this.state.LCNew}
-		   						   LC = {this.state.LC}
-					               viewLC = {this.viewLC}
-								   createLC = {this.createLC}
-		   						   settleLC = {this.settleLC}
-								   viewSingleLC = {this.viewSingleLC}
-								   BuyerSessionView =  {this.BuyerSessionView}
-								   BankSessionCreate =  {this.BankSessionCreate}
-								   BankSessionView =  {this.BankSessionView}
-					               SellerSessionView =  {this.SellerSessionView}
-		   						   SellerSessionSettle = {this.SellerSessionSettle}
-		   						   SellerSessionVSettle = {this.SellerSessionVSettle}
-								   onInputChangeUpdateField={this.onInputChangeUpdateField}
-								   fields={this.state.fields}
-								   closeTab =  {this.closeTab}
-								   closeViewTab =  {this.closeViewTab}
-                                    />
-                    </div>
+                        <Container onInputChangeUpdateField={this.onInputChangeUpdateField}
+                                   account={this.state.account}
+								   buys={this.state.buys}
+								   sells={this.state.sells}
+								   setBalance={this.setBalance}
+								   AuBalance={this.state.AuBalance}
+								   USDBalance={this.state.USDBalance}
+								   Buy={this.Buy}
+								   Sell={this.Sell}	
+								   fields={this.state.fields}/>
+								   
+								                       </div>
                 )
+            
+    }
 }
-}	
-
 export default App;
