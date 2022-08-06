@@ -1,300 +1,556 @@
 import React, { Component } from 'react';
-//import Web3 from 'web3'
-import Web3 from 'web3/dist/web3.min.js'
-import Nav from './Components/Nav'
-import Description from './Components/Description'
-import Container from './Components/Container'
-import Shoes from './Items/all'
+import Web3 from 'web3'
+import Tokens20 from './Tokens/all20';
+import Tokens721 from './Tokens/all721';
+import Nav from './Components/Nav';
+import Description from './Components/Description';
+import Container from './Components/Container';
+import InstallMetamask from './Components/InstallMetamask';
 
 
 
 class App extends Component {
     constructor(){
         super();
-		this.appName = 'LinkedList';
-        this.shoes = Shoes;
-		this.newPayment = this.newPayment.bind(this);
-		this.closePayment = this.closePayment.bind(this);
-		this.PaymentWait = this.PaymentWait.bind(this);
-		this.tick = this.tick.bind(this);
-		this.bCheck = this.bCheck.bind(this);
-		this.startTimer = this.startTimer.bind(this);
-		
-		this.state = {
-			shoes: [],
-			PaymentDetail: {},
-			Conv: 300,
-			defaultGasPrice: null,
-            defaultGasLimit: 200000,
-			paymentf: false,
-			mAddress: '0x',
-			amount: 0,
-			diff: 0,
-		    seconds: '00',   // responsible for the seconds 
-            minutes: '15',  // responsible for the minutes
-			tflag: true
-		};
-		
-		
-			}
-  
-    newPayment = (index) => {
-		
-		var mAddress;
-		let app = this;
-		(async function  main(){
-		await fetch('http://localhost:5000/api/getMAddress')
-		.then(response => response.json())
-		.then(data => {
-			  			mAddress = data.MAddress;
-			console.log(mAddress);
-        app.setState({
-            PaymentDetail: app.state.shoes[index],
-			mAddress
-        })
-						
-					  });
-		
-		var Conv;
-	await fetch('https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD')
-		.then(response => response.json())
-		.then(data => {
-			  			Conv=data.USD;
-						
-			app.setState({
-                        Conv       
-						})
-					  });
-		})();	
-    };	
 
-closePayment = () => {
-        	
-			clearInterval(this.intervalHandle);
-			clearInterval(this.intervalBalance);	
+        this.tokens20 = Tokens20;
+		this.tokens721 = Tokens721;
+        this.appName = 'A Blockchain Charity';
+        this.isWeb3 = true;                 
+        this.newTransfer20 = this.newTransfer20.bind(this);
+		this.newTransfer721 = this.newTransfer721.bind(this);
+		this.newMint20 = this.newMint20.bind(this);
+		this.newMint721 = this.newMint721.bind(this);
+		this.newApprove20 = this.newApprove20.bind(this);
+		this.newApprove721 = this.newApprove721.bind(this);
+        this.closeTransfer = this.closeTransfer.bind(this);
+        this.onInputChangeUpdateField = this.onInputChangeUpdateField.bind(this);
 
-			this.setState({
-            PaymentDetail: {},
-			paymentf: false,	
-			mAddress: '0x',
-			amount: 0,
-			diff: 0,
-		    seconds: '00',   // responsible for the seconds 
-            minutes: '15',  // responsible for the minutes
-			tflag: true,
-			defaultGasPrice: null,
-            defaultGasLimit: 200000	
-	})
-};
-
-PaymentWait = (mAddress,amount) => {
-			
-			this.setState({
-            paymentf: true,
-			amount,
-			mAddress	
-        })
-		
-	};
-
-resetApp = () => {
-      this.setState({
-            PaymentDetail: {},
-			paymentf: false,	
-			mAddress: '0x',
-			amount: 0,
-			diff: 0,
-		    seconds: '00',   // responsible for the seconds 
-            minutes: '15',  // responsible for the minutes
-			tflag: true,
-			defaultGasPrice: null,
-            defaultGasLimit: 200000	
-	})    
-};
-
-
-setGasPrice = (web3) => {
-        web3.eth.getGasPrice((err,price) => {if(!err)
-		{
-			console.log(price);	
-            price = web3.utils.fromWei(price.toString(),'gwei');
-            this.setState({defaultGasPrice: price})
+        this.state = {
+            inProgress: false,
+            tx20: null,
+			tx721: null,
+            network: 'Checking...',
+            account: null,
+            tokens20: [],
+			tokens721: [],
+            transferDetail20: {},
+			transferDetail721: {},
+			mintDetail20: {},
+			mintDetail721: {},
+			approveDetail20: {},
+			approveDetail721: {},
+            fields: {
+                receiver: null,
+                amount: null,
+				metadata: null,
+				tokenId: null,
+                gasPrice: null,
+                gasLimit: null,
+            },
+            defaultGasPrice: null,
+            defaultGasLimit: 200000
+        };
 		}
-		else
-		{
-			console.log(err);
-		}										  
+  
+    		
+	
+	
+	
+    setNetwork = () => {
+        let networkName,that = this;
+		
+        this.web3.eth.net.getId(function (err, networkId) {
+            switch (networkId) {
+                case "1":
+                    networkName = "Main";
+                    break;
+                case "2":
+                    networkName = "Morden";
+                    break;
+                case "3":
+                    networkName = "Ropsten";
+                    break;
+                case "4":
+                    networkName = "Rinkeby";
+                    break;
+                case "42":
+                    networkName = "Kovan";
+                    break;
+                default:
+                    networkName = networkId;
+            }
+
+            that.setState({
+                network: networkName
+            })
         });
     };
 
 
-MMaskTransfer = (MRAddress,amount) => {
+
+	newTransfer20 = (index) => {
+        this.setState({
+            transferDetail20: this.state.tokens20[index]
+        })
+    };
+
+
+
+	newTransfer721 = (index) => {
+        this.setState({
+            transferDetail721: this.state.tokens721[index]
+        })
+    };
+
+	newMint20 = (index) => {
+        this.setState({
+            mintDetail20: this.state.tokens20[index]
+        })
+    };
+
+
+
+	newMint721 = (index) => {
+        this.setState({
+            mintDetail721: this.state.tokens721[index]
+        })
+    };
+
+	newApprove20 = (index) => {
+        this.setState({
+            approveDetail20: this.state.tokens20[index]
+        })
+    };
+
+
+
+	newApprove721 = (index) => {
+        this.setState({
+            approveDetail721: this.state.tokens721[index]
+        })
+    };
+
+
+	closeTransfer = () => {
+        	this.setState({
+            transferDetail20: {},
+			transferDetail721: {},
+			mintDetail20: {},
+			mintDetail721: {},
+			approveDetail20: {},
+			approveDetail721: {},
+            fields: {},
+        })
+	};
+
+    setGasPrice = () => {
+        this.web3.eth.getGasPrice((err,price) => {
+            var Gasprice = this.web3.utils.fromWei(price,'gwei');
+            if(!err) this.setState({defaultGasPrice: Gasprice})
+        	});
+    	};
+
     
-	let app = this; 
-	if (window.ethereum) {
-        const ethereum = window.ethereum;
-       	let web3 = new Web3(ethereum);
-		ethereum.enable().then((accounts) => {
-		let account = accounts[0];
-		 web3.eth.defaultAccount = account ;
-		this.setGasPrice(web3);
-			let tAmount = amount * 1000000000000000000; 
-		let transObj = {to: MRAddress, gas: this.state.defaultGasLimit,gasPrice: this.state.defaultGasPrice, value: tAmount}	
- 		web3.eth.sendTransaction(transObj,function (error, result){  
-			if(!error){
-                    console.log(result);
-					app.resetApp();
-                } else{
-                    console.log(error);
-                }
-			});
-			
-});
-}
-}
 
-tick(){		
-var min = Math.floor(this.secondsRemaining / 60);
-var sec = this.secondsRemaining - (min * 60);
-
-this.setState({
-  minutes: min,
-  seconds: sec
-})
-
-if (sec < 10) {
-  this.setState({
-    seconds: "0" + this.state.seconds,
-  })
-}
-if (min < 10) {
-this.setState({
-  minutes: "0" + this.state.minutes,
- })
-}
-if (min === 0 & sec === 0) {
-clearInterval(this.intervalHandle);
-clearInterval(this.intervalBalance);	
-}	
-this.secondsRemaining--;
-}
-
-
-
-bCheck(){
-let app = this;	
-let amount = this.state.amount;
-let intervalHandle = this.intervalHandle;
-let intervalBalance = this.intervalBalance;	
-this.web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));	
-this.web3.eth.getBalance(this.state.mAddress,function (error, result){  
-			if(!error){
-				let diff = result / 1000000000000000000;
-								if(diff >= amount )
-				{					
-			clearInterval(intervalHandle);
-			clearInterval(intervalBalance);
+    resetApp = () => {
+      this.setState({
+          transferDetail20: {},
+		  transferDetail721: {},
+          fields: {
+              receiver: null,
+              amount: null,
+              gasPrice: null,
+              gasLimit: null,
+			  metadata: null,
+			  tokenId: null,
+          },
+          defaultGasPrice: null,
+      })
+	  window.location.reload();
 		
+    };
+
+
+
+    Transfer = () => {
+
+        	this.setState({
+            	inProgress: true
+        			});
+		
+			//this.web3.eth.defaultAccount = window.web3.defaultAccount;
+		
+       		var contract;
+			if (this.state.fields.metadata)
+				{
+		 			contract = new this.web3.eth.Contract(this.state.transferDetail721.abi,this.state.transferDetail721.address);
 				}
-				
-				app.setState ({
-				diff	
-  				})
-			}
-				
+			else
+				{
+         			contract = new this.web3.eth.Contract(this.state.transferDetail20.abi,this.state.transferDetail20.address);
+				}
+		
+			let app = this; 
+			var metadata;
+			var tokenId;
+			var amount;
+		
+			if(this.state.fields.metadata)
+				{
+		 			metadata = this.state.fields.metadata;
+		 			tokenId = this.state.fields.tokenid;
+				}
+			else
+
+				{
+					amount = this.state.fields.amount*(Math.pow(10,this.state.transferDetail20.decimal));			
+				}	
+        
+			
+        	let receiver = this.state.fields.receiver.toString();
+			let account = this.state.account;
+        
+			if(metadata)
+				{ 
+					contract.methods.transferNFT(account,receiver, tokenId, metadata).send({from: this.web3.eth.defaultAccount}).then(function(response,err){
+					
+					if(response) {
+                        		    console.log(response);
+									app.resetApp();
+
+                                	app.setState({
+                                    tx20: response.tx20,
+									tx721: response.tx721,
+                                    inProgress: false
+                                });
+ 						}else	{
+                					console.log(err);
+            					}
+					});
+				}
+						 else
+								{
+									contract.methods.transfer(receiver, amount).send({from: this.web3.eth.defaultAccount}).then(function(response,err){
+            
+									if(response) {
+                                					console.log(response);
+ 	
+                                					app.resetApp();
+
+                                					app.setState({
+                                    				tx20: response.tx20,
+													tx721: response.tx721,
+                                    				inProgress: false
+                                					});
+                               					}
+									
+									else		{
+                									console.log(err);
+            									}
+        										});
+								}	    
+						};
+
+
+    Mint = () => {
+
+        this.setState({
+            inProgress: true
+        });
+		
+		//this.web3.eth.defaultAccount = window.web3.defaultAccount;
+		
+        var contract;
+		if (this.state.fields.metadata)
+		{
+		contract = new this.web3.eth.Contract(this.state.mintDetail721.abi, this.state.mintDetail721.address);
+		}
 		else
 		{
-			console.log(error);
+        contract = new this.web3.eth.Contract(this.state.mintDetail20.abi, this.state.mintDetail20.address);
 		}
-	
-			});
-}
-	
-
-
-startTimer = () =>{
-
-if(this.state.tflag == true)
-{
-this.intervalHandle = setInterval(this.tick,1000);
-this.intervalBalance = setInterval(this.bCheck,10000);
-	
-	let time = this.state.minutes;
-	this.secondsRemaining = time * 60;
-	this.setState({
-  tflag: false
- });
-}
-}	
-
-
-
-
-
-
 		
-    componentDidMount() {
+        let app = this; 
+		var metadata;
+		var amount;
+		
+		if(this.state.fields.metadata)
+		{
+		metadata = this.state.fields.metadata;
+		}
+		else
+		{
+		amount = this.state.fields.amount*(Math.pow(10,this.state.mintDetail20.decimal));	
+		}	
+        
+        let receiver = this.state.fields.receiver.toString();
+		
+        		
+		if(metadata)
+		{
+			
+		contract.methods.createNFT(receiver, metadata).send({from: this.web3.eth.defaultAccount}).then(function(response){
+			if(response) {
+                                console.log(response);
+								app.resetApp();
+
+                                app.setState({
+                                    tx20: response.tx20,
+									tx721: response.tx721,
+                                    inProgress: false
+                                });
+ 						}
+						});
+		}
+		else
+		{
+			contract.methods.mint(receiver, amount).send({from: this.web3.eth.defaultAccount}).then(function(response){
+            
+			if(response) {
+                                console.log(response);
+ 	
+                                app.resetApp();
+
+                                app.setState({
+                                    tx20: response.tx20,
+									tx721: response.tx721,
+                                    inProgress: false
+                                });
+             }
+        });
+		}    
+	};
+
+
+
+    Approve = () => {
+
+        this.setState({
+            inProgress: true
+        });
+		
+		
+        var contract;
+		if (this.state.approveDetail721.abi)
+		{
+		contract = new this.web3.eth.Contract(this.state.approveDetail721.abi,this.state.approveDetail721.address);
+			
+		}
+		else
+		{
+        contract = new this.web3.eth.Contract(this.state.approveDetail20.abi,this.state.approveDetail20.address);
+		
+		}
+
+		let app = this;
+        let receiver = this.state.fields.receiver.toString();
+		
+	
+		if (this.state.approveDetail20.abi)
+		{
+		let amount = this.state.fields.amount* (Math.pow(10,this.state.approveDetail20.decimal));	
+		
+		contract.methods.approve(receiver, amount).send({from: this.web3.eth.defaultAccount}).then(function(response){
+		
+ 
+			if(response) {
+                                
+	
+                                app.resetApp();
+
+                                app.setState({
+                                    tx20: response.tx20,
+									tx721: response.tx721,
+                                    inProgress: false
+                                });
+            }
+        });
+	
+		}
+		else
+		{
+		let tokenid = this.state.fields.tokenid;
+		contract.methods.approve(receiver, tokenid).send({from: this.web3.eth.defaultAccount}).then(function(response){
+ 
+			if(response) {
+                                console.log(response);
+	
+                                app.resetApp();
+
+                                app.setState({
+                                    tx20: response.tx20,
+									tx721: response.tx721,
+                                    inProgress: false
+                                });
+            }
+        });
+	
+		}			    
+	};
+
+    onInputChangeUpdateField = (name,value) => {
+        let fields = this.state.fields;
+
+        fields[name] = value;
+
+        this.setState({
+            fields
+        });
+    };
+
+    componentDidMount(){
+	
+		var account;
+		
+		if (window.ethereum) {
+        const ethereum = window.ethereum;
+        window.web3 = new Web3(ethereum);
+	    this.web3 = new Web3(ethereum);
+	
+		ethereum.enable().then((accounts) => {
+  		
+		account = accounts[0];
+ 		this.web3.eth.defaultAccount = account ;
 		
 		let app = this;
-		let shoes = app.state.shoes;
-	
 		
-		
-		Shoes.forEach((shoe) => {
-		let logo = shoe.logo;
-        let price = shoe.price;
-        let image = shoe.image;
-        let name = shoe.name;
-		
-		
+		this.setState({
+            account
+        });
+
+        this.setNetwork();
+        this.setGasPrice();
+        
+        Tokens20.forEach((token) => {
+            let erc20Token = new this.web3.eth.Contract(token.abi,token.address);
 			
-		shoes.push({
-                        logo,
-                        price,
+			
+            erc20Token.methods.balanceOf(account).call().then(function(response){
+	
+                if(response) {
+                    let decimal = token.decimal;
+                    let precision = '1e' + decimal;
+                    let balance = response / precision;
+                    let name = token.name;
+                    let symbol = token.symbol;
+                    let icon = token.icon;
+                    let abi = token.abi;
+                    let address = token.address;
+
+                    balance = balance >= 0 ? balance : 0;
+
+                    let tokens20 = app.state.tokens20;
+
+                    if(balance > 0) tokens20.push({
+                        decimal,
+                        balance,
                         name,
-                        image,
+                        symbol,
+                        icon,
+                        abi,
+                        address,
                     });
+
+                    app.setState({
+                        tokens20
+                    })
+                }
+            });
+        });
 		
-		app.setState({
-                        shoes
-       
+		
+		        Tokens721.forEach((token721) => {
+            let erc721Token = new this.web3.eth.Contract(token721.abi,token721.address);
+            
+
+               erc721Token.methods.MDTrack(account).call().then(function (response) {
+				if(response) {
+                    let name = token721.name;
+                    let symbol = token721.symbol;
+                    let icon = token721.icon;
+                    let abi = token721.abi;
+                    let address = token721.address;
+					let tokenid = response;
+						
+                    tokenid = tokenid >= 0 ? tokenid : 0;
+					if(tokenid!==0)
+					{
+					erc721Token.methods.tokenURI(tokenid).call().then(function (response) {
+						if(response) {
+						let metadata = response;                
+						let tokens721 = app.state.tokens721;
+
+                    tokens721.push({
+  
+                        name,
+                        symbol,
+						tokenid,		
+                        icon,
+                        abi,
+                        address,
+						metadata,
+                    });
+
+                    app.setState({
+                        tokens721
+                    })
+					}
+                });
+            }
+			}
+			});
+        });
 		})
-	});
-		
-		
 	}
+	}						   
+						   
 		
+	
+
+						   
+						   
     render() {
-               
+        if(this.isWeb3) {
+       
                 return (
                     <div>
-                        <Nav appName={this.appName} />
-						<div>                        </div>
-						<Description />
-						<Container 
-							shoes={this.state.shoes}
-							newPayment={this.newPayment}
-							closePayment={this.closePayment}
-							PaymentDetail={this.state.PaymentDetail}
-							mAddress={this.state.mAddress}
-							amount={this.state.amount}
-							diff={this.state.diff}
-							paymentf={this.state.paymentf}
-							Conv={this.state.Conv}
-							MMaskTransfer={this.MMaskTransfer}
-							PaymentWait={this.PaymentWait}
-							startTimer={this.startTimer}
-							tick={this.tick}
-							privateToAddress={this.privateToAddress}
-							getRandomWallet={this.getRandomWallet}
-							defaultGasPrice={this.state.defaultGasPrice}
-                            defaultGasLimit={this.state.defaultGasLimit}
-							minutes={this.state.minutes}
-        					seconds={this.state.seconds}/>
-									</div>
-                		)
-           
+                        <Nav appName={this.appName} network={this.state.network} />
+                        <Description />
+                        <Container onInputChangeUpdateField={this.onInputChangeUpdateField}
+                                   transferDetail20={this.state.transferDetail20}
+								   transferDetail721={this.state.transferDetail721}
+								   mintDetail20={this.state.mintDetail20}
+								   mintDetail721={this.state.mintDetail721}
+								   approveDetail20={this.state.approveDetail20}
+								   approveDetail721={this.state.approveDetail721}
+                                   closeTransfer={this.closeTransfer}
+                                   newTransfer20={this.newTransfer20}
+								   newTransfer721={this.newTransfer721}
+								   newApprove20={this.newApprove20}
+								   newApprove721={this.newApprove721}
+					               newMint20={this.newMint20}
+								   newMint721={this.newMint721}
+                                   Transfer={this.Transfer}
+								   Mint={this.Mint}
+					               Approve={this.Approve}
+                                   account={this.state.account}
+                                   defaultGasPrice={this.state.defaultGasPrice}
+                                   defaultGasLimit={this.state.defaultGasLimit}
+                                   tx20={this.state.tx20}
+								   tx721={this.state.tx721}
+                                   inProgress={this.state.inProgress}
+                                   fields={this.state.fields}
+                                   tokens20={this.state.tokens20}
+								   tokens721={this.state.tokens721}/>
+                    </div>
+                )
+            }
+        else{
+            return(
+                <InstallMetamask />
+            )
         }
     }
-
+}
 export default App;
