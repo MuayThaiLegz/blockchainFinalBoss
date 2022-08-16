@@ -1,0 +1,3 @@
+Condos.deployed().then(function(instance) { return instance.createNFT("0x7430bAd4f6eF912623C3595f8B42A4aAEeEee552", "Concord CA");}).then(function(responseb) {console.log("responce", responseb.toString(10));});
+StakeToken.deployed().then(function(instance) { return instance.mint("0xdBcfbEc3A7c0873BA61E5554B8f3d78D13CbAe80", 10000);}).then(function(responseb) {console.log("responce", responseb.toString(10));});
+USD.deployed().then(function(instance) { return instance.mint("0x7430bAd4f6eF912623C3595f8B42A4aAEeEee552", 10000);}).then(function(responseb) {console.log("responce", responseb.toString(10));});
